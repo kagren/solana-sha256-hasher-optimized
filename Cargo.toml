@@ -23,3 +23,6 @@ solana-define-syscall = "2.2.1"
 
 [features]
 sha2 = ["dep:sha2"]
+
+[dev-dependencies]
+rand = "0.9.1"
