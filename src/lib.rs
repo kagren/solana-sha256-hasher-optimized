@@ -3,8 +3,8 @@
 use sha2::{Digest, Sha256};
 use solana_hash::Hash;
 
-// Only include shani_hasher_optimized if we are on x86_64
-#[cfg(target_arch = "x86_64")]
+// Only include shani_hasher_optimized if we are on x86_64 (and not on chain)
+#[cfg(all(target_arch = "x86_64", not(target_os = "solana")))]
 mod shani_hasher_optimized;
 
 #[cfg(any(feature = "sha2", not(target_os = "solana")))]
@@ -32,17 +32,74 @@ impl Hasher {
 #[cfg(target_os = "solana")]
 pub use solana_define_syscall::definitions::sol_sha256;
 
+#[cfg(feature = "metrics")]
+pub static METRICS_HITS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
+#[cfg(feature = "metrics")]
+pub static METRICS_MISSES: [core::sync::atomic::AtomicU64; 32] = [
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+    core::sync::atomic::AtomicU64::new(0),
+];
+
 #[inline(always)]
 /// Return a Sha256 hash for the given data.
 pub fn hashv(vals: &[&[u8]]) -> Hash {
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(target_os = "solana")))]
     {
         if vals.len() == 1 && vals[0].len() == 32 {
+
+            #[cfg(feature = "metrics")]
+            {
+                let old_hits = METRICS_HITS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+
+                if old_hits % 10_000 == 0 {
+                    
+                    log::info!("hashv stats hits {old_hits}");
+                    log::info!("hashv stats misses {:?}", METRICS_MISSES);
+                }
+            }
+
             // Since we know the array contains a single block of 32 bytes (very common in the
             // solana validator), we can use the optimized version of the hasher
             let block = unsafe { &*(vals[0].as_ptr() as *const [u8; 32]) };
             return shani_hasher_optimized::single_hash_32(block).into();
+        }
+
+        #[cfg(feature = "metrics")] {
+            let len_sum = vals.iter().map(|v| v.len()).sum::<usize>().max(1).min(32);
+
+            METRICS_MISSES[len_sum - 1].fetch_add(1, core::sync::atomic::Ordering::Relaxed);
         }
     }
     // Perform the calculation inline, calling this from within a program is

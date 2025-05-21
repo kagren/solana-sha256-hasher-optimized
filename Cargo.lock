@@ -300,6 +300,7 @@ checksum = "61f1bc1357b8188d9c4a3af3fc55276e56987265eb7ad073ae6f8180ee54cecf"
 name = "solana-sha256-hasher"
 version = "2.2.1"
 dependencies = [
+ "log",
  "rand",
  "sha2",
  "solana-define-syscall",
