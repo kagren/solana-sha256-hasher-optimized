@@ -1,4 +1,6 @@
 #![cfg_attr(not(test), no_std)]
+#![allow(unexpected_cfgs)]
+
 #[cfg(any(feature = "sha2", not(target_os = "solana")))]
 use sha2::{Digest, Sha256};
 use solana_hash::Hash;
