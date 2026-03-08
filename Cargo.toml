@@ -9,7 +9,7 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-solana-hash = { version = "3.1", default-features = false }
+solana-hash = { version = "4", features = [ "atomic" ]}
 log = { version = "0.4.25", optional = true }
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
